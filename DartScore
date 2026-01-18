@@ -1,0 +1,325 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Darts Score Counter</title><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #1a1a1a;
+  color: #fff;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.screen { height: 100vh; display: none; flex-direction: column; }
+.screen.active { display: flex; }
+
+.header {
+  flex-shrink: 0;
+  background: #242424;
+  padding: 8px 16px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.match-info { display: flex; gap: 16px; font-size: 12px; }
+
+.match-info strong { color: #00ff88; }
+
+.players { flex: 1; display: flex; flex-direction: column; }
+
+.player {
+  flex: 1;
+  padding: 10px 14px;
+  background: #242424;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.player.active {
+  background: #2b2b2b;
+  border-left: 4px solid #00ff88;
+}
+
+.player.inactive { opacity: 0.45; }
+
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.record { display: flex; gap: 12px; font-size: 11px; }
+
+.score {
+  text-align: center;
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  margin: 4px 0;
+}
+
+.player.active .score { color: #00ff88; }
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.stats span { font-weight: 700; color: #ccc; }
+
+.input {
+  flex-shrink: 0;
+  background: #1a1a1a;
+  border-top: 2px solid #00ff88;
+  padding: 12px;
+}
+
+.display {
+  background: #242424;
+  border: 2px solid #333;
+  border-radius: 8px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 900;
+  color: #00ff88;
+  margin-bottom: 8px;
+}
+
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.pad button {
+  padding: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  background: #242424;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.pad button.zero { grid-column: span 2; }
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.actions button {
+  padding: 14px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: none;
+}
+
+.clear { background: #dc3545; color: #fff; }
+.submit { background: #00ff88; color: #000; }
+
+.banner {
+  background: #00ff88;
+  color: #000;
+  text-align: center;
+  padding: 8px;
+  font-weight: 800;
+  display: none;
+}
+.banner.active { display: block; }
+
+.setup { padding: 16px; overflow: auto; }
+.setup label { display:block; margin-top:12px; margin-bottom:4px; }
+.setup input, .setup select { width:100%; padding:8px; }
+</style></head><body><!-- SETUP SCREEN --><div class="screen active" id="setup">
+  <div class="header"><strong>🎯 Darts Score Counter</strong></div>
+  <div class="setup">
+    <label>Game Mode</label>
+    <select id="mode">
+      <option value="501">501</option>
+      <option value="301">301</option>
+    </select><label>Legs to win a set</label>
+<input id="legsToWin" type="number" value="3" min="1" />
+
+<label>Sets to win the match</label>
+<input id="setsToWin" type="number" value="2" min="1" />
+
+<label>Players</label>
+<select id="numPlayers" onchange="renderPlayerInputs()">
+  <option value="2">2 Players</option>
+  <option value="3">3 Players</option>
+  <option value="4">4 Players</option>
+</select>
+
+<div id="playerInputs"></div>
+
+<button class="submit" style="width:100%; margin-top:16px;" onclick="startGame()">Start Game</button>
+
+  </div>
+</div><!-- GAME SCREEN --><div class="screen" id="game">
+  <div class="header">
+    <button onclick="backToSetup()">←</button>
+    <div class="match-info">
+      <div>Leg <strong id="leg">1</strong></div>
+      <div>Set <strong id="set">1</strong></div>
+      <div>First to <strong id="legsTarget"></strong> legs</div>
+      <div>First to <strong id="setsTarget"></strong> sets</div>
+    </div>
+  </div>  <div class="banner" id="banner"></div>  <div class="players" id="players"></div>  <div class="input" id="inputArea">
+    <div class="display" id="display">0</div>
+    <div class="pad">
+      <button onclick="num(1)">1</button><button onclick="num(2)">2</button><button onclick="num(3)">3</button>
+      <button onclick="num(4)">4</button><button onclick="num(5)">5</button><button onclick="num(6)">6</button>
+      <button onclick="num(7)">7</button><button onclick="num(8)">8</button><button onclick="num(9)">9</button>
+      <button class="zero" onclick="num(0)">0</button><button onclick="back()">⌫</button>
+    </div>
+    <div class="actions">
+      <button class="clear" onclick="clearInput()">Clear</button>
+      <button class="submit" onclick="submit()">Submit</button>
+    </div>
+  </div>
+</div><script>
+let state;
+
+function renderPlayerInputs() {
+  const n = +numPlayers.value;
+  playerInputs.innerHTML = '';
+  for (let i = 1; i <= n; i++) {
+    playerInputs.innerHTML += `<label>Player ${i}</label><input id="p${i}" value="Player ${i}">`;
+  }
+}
+
+function startGame() {
+  const start = +mode.value;
+  const legsToWin = +legsToWinInput.value;
+  const setsToWin = +setsToWinInput.value;
+
+  state = {
+    start,
+    legsToWin,
+    setsToWin,
+    leg: 1,
+    set: 1,
+    current: 0,
+    input: '',
+    finished: false,
+    players: Array.from({length:+numPlayers.value}, (_,i)=>({
+      name: document.getElementById(`p${i+1}`).value,
+      score: start,
+      legs: 0,
+      sets: 0,
+      rounds: [],
+      setRounds: []
+    }))
+  };
+
+  setup.classList.remove('active');
+  game.classList.add('active');
+
+  legsTarget.textContent = legsToWin;
+  setsTarget.textContent = setsToWin;
+
+  render();
+}
+
+function backToSetup() { location.reload(); }
+
+function avg(a){ return a.length ? Math.round(a.reduce((x,y)=>x+y,0)/a.length) : 0; }
+
+function showBanner(text) {
+  banner.textContent = text;
+  banner.classList.add('active');
+  setTimeout(()=>banner.classList.remove('active'), 1500);
+}
+
+function render() {
+  leg.textContent = state.leg;
+  set.textContent = state.set;
+
+  players.innerHTML = '';
+  state.players.forEach((p,i)=>{
+    const d = document.createElement('div');
+    d.className = `player ${i===state.current && !state.finished ? 'active':'inactive'}`;
+    d.innerHTML = `
+      <div class="player-header">
+        <strong>${p.name}</strong>
+        <div class="record">
+          <div>Legs ${p.legs}/${state.legsToWin}</div>
+          <div>Sets ${p.sets}/${state.setsToWin}</div>
+        </div>
+      </div>
+      <div class="score">${p.score}</div>
+      <div class="stats">
+        <div>AVG <span>${avg(p.rounds)}</span></div>
+        <div>SET AVG <span>${avg(p.setRounds)}</span></div>
+      </div>
+    `;
+    players.appendChild(d);
+  });
+}
+
+function num(n){ if(state.finished) return; state.input=(state.input+n).slice(0,3); display.textContent=state.input; }
+function back(){ if(state.finished) return; state.input=state.input.slice(0,-1); display.textContent=state.input||'0'; }
+function clearInput(){ state.input=''; display.textContent='0'; }
+
+function submit(){
+  if(state.finished) return;
+  const v = +state.input;
+  if(!v || v>180) return;
+
+  const p = state.players[state.current];
+
+  if(p.score - v < 0){
+    clearInput();
+    state.current = (state.current+1)%state.players.length;
+    render();
+    return;
+  }
+
+  p.score -= v;
+  p.rounds.push(v);
+  p.setRounds.push(v);
+
+  if(p.score === 0){
+    p.legs++;
+    showBanner(`${p.name} wins the leg`);
+
+    state.players.forEach(pl=>{ pl.score = state.start; /* keep setRounds across legs */ });
+    state.leg++;
+
+    if(p.legs >= state.legsToWin){
+      p.sets++;
+      showBanner(`${p.name} wins the set`);
+      state.players.forEach(pl=>pl.legs=0);
+      state.set++;
+
+      if(p.sets >= state.setsToWin){
+        showBanner(`${p.name} wins the match`);
+        state.finished = true;
+        inputArea.style.opacity = 0.4;
+      }
+    }
+  }
+
+  state.current = (state.current+1)%state.players.length;
+  clearInput();
+  render();
+}
+
+const legsToWinInput = document.getElementById('legsToWin');
+const setsToWinInput = document.getElementById('setsToWin');
+renderPlayerInputs();
+</script></body>
+</html>
